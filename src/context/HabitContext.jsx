@@ -23,14 +23,44 @@ const DEFAULT_HABITS = [
 ];
 
 const DEFAULT_GOALS = [
-  { id: '1', title: 'Run a 5K', progress: 0, target: 5, unit: 'km', color: '#60A5FA' },
-  { id: '2', title: 'Read 12 Books', progress: 0, target: 12, unit: 'books', color: '#F472B6' },
-  { id: '3', title: 'Meditate 100 Days', progress: 0, target: 100, unit: 'days', color: '#34D399' },
-  { id: '4', title: 'Save ₹50,000', progress: 0, target: 50000, unit: '₹', color: '#FBBF24' },
+  { id: '1', title: 'Run a 5K', progress: 3, target: 5, unit: 'km', color: '#60A5FA' },
+  { id: '2', title: 'Read 12 Books', progress: 4, target: 12, unit: 'books', color: '#F472B6' },
+  { id: '3', title: 'Meditate 100 Days', progress: 23, target: 100, unit: 'days', color: '#34D399' },
+  { id: '4', title: 'Save ₹50,000', progress: 12500, target: 50000, unit: '₹', color: '#FBBF24' },
 ];
 
 export function toDateStr(date) {
   return date.toISOString().split('T')[0];
+}
+
+// Generates realistic demo data for the previous calendar month
+function generateDemoMonth(habits) {
+  const today = new Date();
+  const prevMonth = today.getMonth() === 0 ? 12 : today.getMonth(); // 1-indexed
+  const prevYear = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+  const daysInMonth = new Date(prevYear, prevMonth, 0).getDate();
+
+  // Per-habit base completion rates (realistic for a motivated student)
+  const baseRates = [0.82, 0.74, 0.91, 0.68, 0.63, 0.58, 0.79, 0.84, 0.52, 0.73, 0.67, 0.87];
+
+  // Week patterns: motivated start → mid-month dip → strong finish
+  const weekBoosts = [0.10, -0.08, 0.04, 0.08, 0.06];
+
+  const completions = {};
+  habits.forEach((h, idx) => {
+    completions[h.id] = {};
+    const base = baseRates[idx % baseRates.length];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${prevYear}-${String(prevMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const weekIdx = Math.floor((day - 1) / 7);
+      const weekBoost = weekBoosts[Math.min(weekIdx, weekBoosts.length - 1)];
+      const dayOfWeek = new Date(prevYear, prevMonth - 1, day).getDay();
+      const weekendDip = (dayOfWeek === 0 || dayOfWeek === 6) ? -0.14 : 0;
+      const rate = Math.max(0.08, Math.min(0.97, base + weekBoost + weekendDip));
+      completions[h.id][dateStr] = Math.random() < rate;
+    }
+  });
+  return completions;
 }
 
 export function HabitProvider({ children }) {
@@ -56,8 +86,11 @@ export function HabitProvider({ children }) {
           setCompletions(data.completions || {});
           setGoals(data.goals || DEFAULT_GOALS);
         } else {
-          // New user — save defaults
-          await setDoc(ref, { habits: DEFAULT_HABITS, completions: {}, goals: DEFAULT_GOALS });
+          // New user — generate demo data for previous month so charts look great
+          const demoCompletions = generateDemoMonth(DEFAULT_HABITS);
+          setCompletions(demoCompletions);
+          setGoals(DEFAULT_GOALS);
+          await setDoc(ref, { habits: DEFAULT_HABITS, completions: demoCompletions, goals: DEFAULT_GOALS });
         }
       } catch (e) {
         console.error('Failed to load from Firestore:', e);
