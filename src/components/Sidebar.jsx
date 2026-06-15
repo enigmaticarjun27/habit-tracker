@@ -26,6 +26,7 @@ export default function Sidebar() {
           key={to}
           to={to}
           end={to === '/'}
+          data-tour={`nav-${to}`}
           onClick={() => setOpen(false)}
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
@@ -89,6 +90,7 @@ export default function Sidebar() {
           </NavLink>
 
           <button
+            data-tour="logout"
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
