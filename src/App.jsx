@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { HabitProvider } from './context/HabitContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
+import OnboardingTour from './components/OnboardingTour';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import HabitTracker from './pages/HabitTracker';
@@ -32,6 +33,7 @@ function AppContent() {
     <HabitProvider>
       <BrowserRouter>
         <div className="flex h-screen overflow-hidden bg-[#0A0A0F]">
+          <OnboardingTour />
           <Sidebar />
           <main className="flex-1 overflow-y-auto">
             <Routes>
