@@ -8,18 +8,21 @@ const HabitContext = createContext();
 export const WEEK_COLORS = ['#60A5FA', '#F472B6', '#34D399', '#FBBF24', '#A78BFA'];
 
 const DEFAULT_HABITS = [
-  { id: '1', name: 'Morning Workout', icon: '💪', color: '#60A5FA' },
-  { id: '2', name: 'Read 30 Minutes', icon: '📚', color: '#F472B6' },
-  { id: '3', name: 'Drink 8 Glasses Water', icon: '💧', color: '#34D399' },
-  { id: '4', name: 'Meditate 10 Min', icon: '🧘', color: '#FBBF24' },
-  { id: '5', name: 'Study / Learn', icon: '🎓', color: '#A78BFA' },
-  { id: '6', name: 'Journal Writing', icon: '📝', color: '#FB923C' },
-  { id: '7', name: 'Sleep by 11 PM', icon: '😴', color: '#38BDF8' },
-  { id: '8', name: 'Healthy Eating', icon: '🥗', color: '#4ADE80' },
-  { id: '9', name: 'Cold Shower', icon: '🚿', color: '#E879F9' },
-  { id: '10', name: 'Practice Skill', icon: '⚡', color: '#F87171' },
-  { id: '11', name: 'No Screen After 9PM', icon: '📵', color: '#FCD34D' },
-  { id: '12', name: 'Walk / Steps', icon: '🚶', color: '#6EE7B7' },
+  { id: '1',  name: 'Morning Workout',          icon: '💪', color: '#60A5FA' },
+  { id: '2',  name: 'Drink 8 Glasses Water',    icon: '💧', color: '#38BDF8' },
+  { id: '3',  name: 'Wake up by 4:00 AM',       icon: '⏰', color: '#FBBF24' },
+  { id: '4',  name: 'Cold Shower',              icon: '🚿', color: '#E879F9' },
+  { id: '5',  name: 'Stretch / Mobility',       icon: '🤸', color: '#34D399' },
+  { id: '6',  name: 'Meditate (10 min)',         icon: '🧘', color: '#A78BFA' },
+  { id: '7',  name: 'Journal / Brain Dump',     icon: '📝', color: '#FB923C' },
+  { id: '8',  name: 'No Phone First 30 Min',    icon: '📵', color: '#F87171' },
+  { id: '9',  name: 'Study Core Subjects',      icon: '📚', color: '#818CF8' },
+  { id: '10', name: 'Work on Project',          icon: '💻', color: '#4ADE80' },
+  { id: '11', name: 'Watch Educational Video',  icon: '🎓', color: '#FCD34D' },
+  { id: '12', name: 'Revise Yesterday\'s Notes',icon: '🔄', color: '#6EE7B7' },
+  { id: '13', name: 'Learn Something New',      icon: '🌱', color: '#C084FC' },
+  { id: '14', name: 'Plan Tomorrow (5 min)',    icon: '📋', color: '#94A3B8' },
+  { id: '15', name: 'Evening Walk / Run',       icon: '🏃', color: '#F472B6' },
 ];
 
 const DEFAULT_GOALS = [
@@ -37,7 +40,8 @@ export function toDateStr(date) {
 // Generates demo data for previous full month + current month up to yesterday
 function generateDemoData(habits) {
   const today = new Date();
-  const baseRates = [0.82, 0.74, 0.91, 0.68, 0.63, 0.58, 0.79, 0.84, 0.52, 0.73, 0.67, 0.87];
+  // Rates matched to each habit's realistic difficulty
+  const baseRates = [0.78, 0.88, 0.62, 0.74, 0.82, 0.76, 0.69, 0.71, 0.84, 0.73, 0.80, 0.77, 0.70, 0.85, 0.75];
   const weekBoosts = [0.10, -0.08, 0.04, 0.08, 0.06];
 
   const completions = {};
