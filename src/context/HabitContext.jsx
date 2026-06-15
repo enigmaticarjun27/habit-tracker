@@ -1,4 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from './AuthContext';
 
 const HabitContext = createContext();
 
@@ -19,52 +22,65 @@ const DEFAULT_HABITS = [
   { id: '12', name: 'Walk / Steps', icon: '🚶', color: '#6EE7B7' },
 ];
 
-function toDateStr(date) {
+const DEFAULT_GOALS = [
+  { id: '1', title: 'Run a 5K', progress: 0, target: 5, unit: 'km', color: '#60A5FA' },
+  { id: '2', title: 'Read 12 Books', progress: 0, target: 12, unit: 'books', color: '#F472B6' },
+  { id: '3', title: 'Meditate 100 Days', progress: 0, target: 100, unit: 'days', color: '#34D399' },
+  { id: '4', title: 'Save ₹50,000', progress: 0, target: 50000, unit: '₹', color: '#FBBF24' },
+];
+
+export function toDateStr(date) {
   return date.toISOString().split('T')[0];
 }
 
-function generateDemo(habits) {
-  const c = {};
-  const today = new Date();
-  const rates = [0.9, 0.85, 0.95, 0.8, 0.75, 0.88, 0.7, 0.92, 0.65, 0.85, 0.78, 0.83];
-  habits.forEach((h, idx) => {
-    c[h.id] = {};
-    for (let i = 90; i >= 1; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      c[h.id][toDateStr(d)] = Math.random() < (rates[idx] || 0.8);
-    }
-  });
-  return c;
-}
-
 export function HabitProvider({ children }) {
-  const [habits, setHabits] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ht_habits')) || DEFAULT_HABITS; } catch { return DEFAULT_HABITS; }
-  });
+  const { user } = useAuth();
+  const [habits, setHabits] = useState(DEFAULT_HABITS);
+  const [completions, setCompletions] = useState({});
+  const [goals, setGoals] = useState(DEFAULT_GOALS);
+  const [loaded, setLoaded] = useState(false);
+  const saveTimer = useRef(null);
+  const isFirstLoad = useRef(true);
 
-  const [completions, setCompletions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ht_completions');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    const demo = generateDemo(DEFAULT_HABITS);
-    localStorage.setItem('ht_completions', JSON.stringify(demo));
-    return demo;
-  });
+  // Load data from Firestore when user logs in
+  useEffect(() => {
+    if (!user) { setLoaded(false); return; }
 
-  const [goals, setGoals] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ht_goals')) || [
-      { id: '1', title: 'Run a 5K', progress: 68, target: 100, unit: 'km', color: '#60A5FA' },
-      { id: '2', title: 'Read 12 Books', progress: 7, target: 12, unit: 'books', color: '#F472B6' },
-      { id: '3', title: 'Meditate 100 Days', progress: 72, target: 100, unit: 'days', color: '#34D399' },
-      { id: '4', title: 'Save ₹50,000', progress: 32000, target: 50000, unit: '₹', color: '#FBBF24' },
-    ]; } catch { return []; }
-  });
+    const load = async () => {
+      try {
+        const ref = doc(db, 'users', user.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          setHabits(data.habits || DEFAULT_HABITS);
+          setCompletions(data.completions || {});
+          setGoals(data.goals || DEFAULT_GOALS);
+        } else {
+          // New user — save defaults
+          await setDoc(ref, { habits: DEFAULT_HABITS, completions: {}, goals: DEFAULT_GOALS });
+        }
+      } catch (e) {
+        console.error('Failed to load from Firestore:', e);
+      }
+      setLoaded(true);
+      isFirstLoad.current = false;
+    };
 
-  useEffect(() => { localStorage.setItem('ht_habits', JSON.stringify(habits)); }, [habits]);
-  useEffect(() => { localStorage.setItem('ht_completions', JSON.stringify(completions)); }, [completions]);
-  useEffect(() => { localStorage.setItem('ht_goals', JSON.stringify(goals)); }, [goals]);
+    load();
+  }, [user]);
+
+  // Save to Firestore whenever data changes (debounced 1.5s)
+  useEffect(() => {
+    if (!loaded || !user || isFirstLoad.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'users', user.uid), { habits, completions, goals });
+      } catch (e) {
+        console.error('Failed to save:', e);
+      }
+    }, 1500);
+  }, [habits, completions, goals]);
 
   const toggleCompletion = (habitId, dateStr) => {
     setCompletions(prev => ({
@@ -76,7 +92,6 @@ export function HabitProvider({ children }) {
   const getStreak = (habitId) => {
     let streak = 0;
     const d = new Date();
-    // if today not done, start from yesterday
     if (!completions[habitId]?.[toDateStr(d)]) d.setDate(d.getDate() - 1);
     while (completions[habitId]?.[toDateStr(d)]) {
       streak++;
@@ -89,10 +104,8 @@ export function HabitProvider({ children }) {
     const dates = Object.keys(completions[habitId] || {}).sort();
     let longest = 0, cur = 0;
     for (let i = 0; i < dates.length; i++) {
-      if (completions[habitId][dates[i]]) {
-        cur++;
-        if (cur > longest) longest = cur;
-      } else cur = 0;
+      if (completions[habitId][dates[i]]) { cur++; if (cur > longest) longest = cur; }
+      else cur = 0;
     }
     return longest;
   };
@@ -103,49 +116,41 @@ export function HabitProvider({ children }) {
       const day = i + 1;
       const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const done = habits.filter(h => completions[h.id]?.[dateStr]).length;
-      const total = habits.length;
-      return { day, done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+      return { day, done, total: habits.length, pct: habits.length ? Math.round((done / habits.length) * 100) : 0 };
     });
   };
 
   const getWeeklyStats = (year, month) => {
     const daysInMonth = new Date(year, month, 0).getDate();
     const weeks = [];
-    let weekStart = 1;
-    let wIdx = 0;
+    let weekStart = 1, wIdx = 0;
     while (weekStart <= daysInMonth) {
       const weekEnd = Math.min(weekStart + 6, daysInMonth);
       let done = 0, total = 0;
       for (let d = weekStart; d <= weekEnd; d++) {
         const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        habits.forEach(h => {
-          total++;
-          if (completions[h.id]?.[dateStr]) done++;
-        });
+        habits.forEach(h => { total++; if (completions[h.id]?.[dateStr]) done++; });
       }
       weeks.push({
-        label: `Week ${wIdx + 1}`,
-        done, total,
+        label: `Week ${wIdx + 1}`, done, total,
         pct: total ? Math.round((done / total) * 100) : 0,
         color: WEEK_COLORS[wIdx % WEEK_COLORS.length],
         days: Array.from({ length: weekEnd - weekStart + 1 }, (_, i) => weekStart + i),
       });
-      weekStart = weekEnd + 1;
-      wIdx++;
+      weekStart = weekEnd + 1; wIdx++;
     }
     return weeks;
   };
 
   const addHabit = (habit) => setHabits(prev => [...prev, { ...habit, id: Date.now().toString() }]);
   const removeHabit = (id) => setHabits(prev => prev.filter(h => h.id !== id));
-
   const addGoal = (goal) => setGoals(prev => [...prev, { ...goal, id: Date.now().toString() }]);
   const updateGoal = (id, updates) => setGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
   const removeGoal = (id) => setGoals(prev => prev.filter(g => g.id !== id));
 
   return (
     <HabitContext.Provider value={{
-      habits, completions, goals,
+      habits, completions, goals, loaded,
       toggleCompletion, getStreak, getLongestStreak,
       getMonthlyData, getWeeklyStats,
       addHabit, removeHabit,
