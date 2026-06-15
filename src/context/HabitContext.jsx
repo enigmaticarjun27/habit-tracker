@@ -64,7 +64,7 @@ function generateDemoMonth(habits) {
 }
 
 export function HabitProvider({ children }) {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const [habits, setHabits] = useState(DEFAULT_HABITS);
   const [completions, setCompletions] = useState({});
   const [goals, setGoals] = useState(DEFAULT_GOALS);
@@ -72,9 +72,20 @@ export function HabitProvider({ children }) {
   const saveTimer = useRef(null);
   const isFirstLoad = useRef(true);
 
+  // Load demo data when in demo mode
+  useEffect(() => {
+    if (!isDemo) return;
+    const demoCompletions = generateDemoMonth(DEFAULT_HABITS);
+    setHabits(DEFAULT_HABITS);
+    setCompletions(demoCompletions);
+    setGoals(DEFAULT_GOALS);
+    setLoaded(true);
+    isFirstLoad.current = false;
+  }, [isDemo]);
+
   // Load data from Firestore when user logs in
   useEffect(() => {
-    if (!user) { setLoaded(false); return; }
+    if (!user) { if (!isDemo) setLoaded(false); return; }
 
     const load = async () => {
       try {
@@ -102,9 +113,9 @@ export function HabitProvider({ children }) {
     load();
   }, [user]);
 
-  // Save to Firestore whenever data changes (debounced 1.5s)
+  // Save to Firestore whenever data changes (debounced 1.5s) — skip in demo mode
   useEffect(() => {
-    if (!loaded || !user || isFirstLoad.current) return;
+    if (!loaded || !user || isDemo || isFirstLoad.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {

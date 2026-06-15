@@ -4,6 +4,7 @@ import { HabitProvider } from './context/HabitContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
 import OnboardingTour from './components/OnboardingTour';
+import DemoBanner from './components/DemoBanner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import HabitTracker from './pages/HabitTracker';
@@ -24,27 +25,30 @@ function LoadingScreen() {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, isDemo } = useAuth();
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <Login />;
+  if (!user && !isDemo) return <Login />;
 
   return (
     <HabitProvider>
       <BrowserRouter>
-        <div className="flex h-screen overflow-hidden bg-[#0A0A0F]">
-          <OnboardingTour />
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/tracker" element={<HabitTracker />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/goals" element={<Goals />} />
-              <Route path="/streaks" element={<Streaks />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </main>
+        <div className="flex flex-col h-screen overflow-hidden bg-[#0A0A0F]">
+          {isDemo && <DemoBanner />}
+          <div className="flex flex-1 overflow-hidden">
+            {!isDemo && <OnboardingTour />}
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/tracker" element={<HabitTracker />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/goals" element={<Goals />} />
+                <Route path="/streaks" element={<Streaks />} />
+                <Route path="/settings" element={<Settings />} />
+              </Routes>
+            </main>
+          </div>
         </div>
       </BrowserRouter>
     </HabitProvider>
