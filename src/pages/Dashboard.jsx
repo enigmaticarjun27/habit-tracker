@@ -1,4 +1,5 @@
 import { useHabits } from '../context/HabitContext';
+import { useAuth } from '../context/AuthContext';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
@@ -37,6 +38,8 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const { habits, completions, getStreak, getMonthlyData, toDateStr } = useHabits();
+  const { user } = useAuth();
+  const firstName = user?.displayName?.split(' ')[0] || 'there';
   const today = new Date();
   const todayStr = toDateStr(today);
   const [month] = useState(today.getMonth() + 1);
@@ -80,7 +83,7 @@ export default function Dashboard() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">{greeting}, Arjun! 👋</h1>
+        <h1 className="text-2xl font-bold text-white">{greeting}, {firstName}! 👋</h1>
         <p className="text-slate-400 text-sm mt-1">Let's make today count. You're on a roll!</p>
       </div>
 
