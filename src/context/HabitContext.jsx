@@ -34,32 +34,47 @@ export function toDateStr(date) {
 }
 
 // Generates realistic demo data for the previous calendar month
-function generateDemoMonth(habits) {
+// Generates demo data for previous full month + current month up to yesterday
+function generateDemoData(habits) {
   const today = new Date();
-  const prevMonth = today.getMonth() === 0 ? 12 : today.getMonth(); // 1-indexed
-  const prevYear = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
-  const daysInMonth = new Date(prevYear, prevMonth, 0).getDate();
-
-  // Per-habit base completion rates (realistic for a motivated student)
   const baseRates = [0.82, 0.74, 0.91, 0.68, 0.63, 0.58, 0.79, 0.84, 0.52, 0.73, 0.67, 0.87];
-
-  // Week patterns: motivated start → mid-month dip → strong finish
   const weekBoosts = [0.10, -0.08, 0.04, 0.08, 0.06];
 
   const completions = {};
+  habits.forEach((h, idx) => { completions[h.id] = {}; });
+
+  // Previous full month
+  const prevMonth = today.getMonth() === 0 ? 12 : today.getMonth();
+  const prevYear = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+  const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+
   habits.forEach((h, idx) => {
-    completions[h.id] = {};
     const base = baseRates[idx % baseRates.length];
-    for (let day = 1; day <= daysInMonth; day++) {
+    for (let day = 1; day <= daysInPrevMonth; day++) {
       const dateStr = `${prevYear}-${String(prevMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const weekIdx = Math.floor((day - 1) / 7);
-      const weekBoost = weekBoosts[Math.min(weekIdx, weekBoosts.length - 1)];
-      const dayOfWeek = new Date(prevYear, prevMonth - 1, day).getDay();
-      const weekendDip = (dayOfWeek === 0 || dayOfWeek === 6) ? -0.14 : 0;
-      const rate = Math.max(0.08, Math.min(0.97, base + weekBoost + weekendDip));
+      const weekBoost = weekBoosts[Math.min(Math.floor((day - 1) / 7), weekBoosts.length - 1)];
+      const dow = new Date(prevYear, prevMonth - 1, day).getDay();
+      const rate = Math.max(0.08, Math.min(0.97, base + weekBoost + (dow === 0 || dow === 6 ? -0.14 : 0)));
       completions[h.id][dateStr] = Math.random() < rate;
     }
   });
+
+  // Current month up to yesterday
+  const curYear = today.getFullYear();
+  const curMonth = today.getMonth() + 1;
+  const yesterday = today.getDate() - 1;
+
+  habits.forEach((h, idx) => {
+    const base = baseRates[idx % baseRates.length];
+    for (let day = 1; day <= yesterday; day++) {
+      const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const weekBoost = weekBoosts[Math.min(Math.floor((day - 1) / 7), weekBoosts.length - 1)];
+      const dow = new Date(curYear, curMonth - 1, day).getDay();
+      const rate = Math.max(0.08, Math.min(0.97, base + weekBoost + (dow === 0 || dow === 6 ? -0.14 : 0)));
+      completions[h.id][dateStr] = Math.random() < rate;
+    }
+  });
+
   return completions;
 }
 
@@ -75,7 +90,7 @@ export function HabitProvider({ children }) {
   // Load demo data when in demo mode
   useEffect(() => {
     if (!isDemo) return;
-    const demoCompletions = generateDemoMonth(DEFAULT_HABITS);
+    const demoCompletions = generateDemoData(DEFAULT_HABITS);
     setHabits(DEFAULT_HABITS);
     setCompletions(demoCompletions);
     setGoals(DEFAULT_GOALS);
@@ -98,7 +113,7 @@ export function HabitProvider({ children }) {
           setGoals(data.goals || DEFAULT_GOALS);
         } else {
           // New user — generate demo data for previous month so charts look great
-          const demoCompletions = generateDemoMonth(DEFAULT_HABITS);
+          const demoCompletions = generateDemoData(DEFAULT_HABITS);
           setCompletions(demoCompletions);
           setGoals(DEFAULT_GOALS);
           await setDoc(ref, { habits: DEFAULT_HABITS, completions: demoCompletions, goals: DEFAULT_GOALS });
